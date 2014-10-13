@@ -46,19 +46,41 @@ var _ = Describe("Gowebmock", func() {
 
       last := mocktest.LastError()
       Expect(last[0]).To(Equal("Unexpected Request"))
-      Expect(last[1]).To(Equal("GET " + expected))
+      Expect(last[1]).To(Equal("GET /unknown"))
     })
   })
 
   Describe("when an mocked request is made", func () {
     It("does not fail the test", func () {
       expected := webmock.Url("/known")
-      webmock.Expect("GET", expected)
+      webmock.Expect("GET", "/known")
 
       http.Get(expected)
 
       Expect(mocktest.ErrorCount()).To(Equal(0))
       webmock.Verify(mocktest)
+    })
+
+    It("returns supplied body", func () {
+      body := make([]byte, 1024)
+      expected := "Some HTTP Body"
+      webmock.Expect("GET", "/known").WithBody(expected)
+
+      res, _ := http.Get(webmock.Url("/known"))
+
+      bytes, _ := res.Body.Read(body)
+      actual := string(body[:bytes])
+      Expect(actual).To(BeEquivalentTo(expected))
+    })
+
+    It("gives supplied headers", func () {
+      headers := map[string]string{"X-Header":"Value"}
+
+      webmock.Expect("GET", "/known").WithHeaders(headers)
+      res, _ := http.Get(webmock.Url("/known"))
+
+      header := res.Header["X-Header"][0]
+      Expect(header).To(Equal("Value"))
     })
   })
 })
